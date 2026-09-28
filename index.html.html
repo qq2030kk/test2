@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Drink Shop Adventure</title>
+<style>
+    /* 滿版設定 */
+    body, html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #000;
+        font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; /* 更具現代遊戲感的字體 */
+        user-select: none;
+        -webkit-user-select: none;
+        overflow: hidden;
+    }
+
+    #game-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        background: #000;
+    }
+
+    /* =========================================
+       唯美開頭畫面 (極簡透明感)
+       ========================================= */
+    #title-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: #000;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        transition: opacity 1.5s ease;
+    }
+
+    /* 標題透明浮動面板 - 不擋底圖 */
+    .glass-box {
+        background: rgba(0, 0, 0, 0.3); 
+        backdrop-filter: blur(8px); 
+        -webkit-backdrop-filter: blur(8px);
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 40px 60px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 800px;
+        text-align: center;
+        animation: floatUp 1.5s ease-out;
+    }
+
+    @keyframes floatUp {
+        0% { opacity: 0; transform: translateY(20px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .title-text {
+        color: #fff;
+        font-size: clamp(2rem, 5vw, 4rem);
+        font-weight: 300;
+        text-shadow: 0 4px 15px rgba(0,0,0,0.8);
+        margin-bottom: 10px;
+        letter-spacing: 4px;
+    }
+
+    .title-subtext {
+        color: #e2c073; /* 典雅的淡金色 */
+        font-size: clamp(1rem, 2vw, 1.5rem);
+        text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+        margin-bottom: 40px;
+        letter-spacing: 6px;
+        font-weight: normal;
+    }
+
+    .start-btn {
+        background: rgba(255, 255, 255, 0.1); 
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 4px; /* 現代遊戲常用的微圓角 */
+        padding: 12px 50px;
+        color: #fff;
+        font-size: clamp(1rem, 2vw, 1.2rem);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        backdrop-filter: blur(4px);
+    }
+
+    .start-btn:hover {
+        background: rgba(255, 255, 255, 0.9);
+        color: #000;
+        border-color: #fff;
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+    }
+
+    /* =========================================
+       遊戲區域 (維持完美顯示不裁切)
+       ========================================= */
+    #visual-area {
+        flex: 1;
+        position: relative;
+        background-color: #000;
+        background-size: cover; 
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+
+    @media (orientation: landscape) {
+        #visual-area {
+            background-size: contain; 
+            background-position: center bottom; 
+        }
+    }
+
+    /* =========================================
+       高級毛玻璃 UI 互動區 (投影用，美感與醒目兼具)
+       ========================================= */
+    #bottom-ui {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        /* 移除底層背景色，讓對話框真正浮動在畫面上 */
+        background: transparent; 
+        padding: 0 2vw 20px 2vw; 
+        position: relative;
+        margin-top: -80px; /* 讓對話框稍微往上疊加在圖片上，更有整體感 */
+        z-index: 10;
+    }
+
+    /* 真實遊戲感的半透明對話框 */
+    .rpg-dialog {
+        width: 100%;
+        max-width: 1200px; 
+        margin: 0 auto;
+        min-height: 220px; 
+        background: rgba(15, 20, 25, 0.8); /* 深色半透明底 */
+        backdrop-filter: blur(12px); /* 質感毛玻璃核心 */
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.15); /* 極細的高光邊緣 */
+        border-top: 3px solid #e2c073; /* 頂部優雅金線點綴 */
+        border-radius: 8px;
+        position: relative;
+        padding: 25px 40px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+        cursor: pointer;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+    }
+
+    /* 投影用文字：清晰、優雅、陰影自然 */
+    #dialog-text {
+        color: #f8f9fa;
+        font-size: clamp(1.3rem, 2.5vw, 1.8rem); 
+        line-height: 1.7;
+        font-weight: 500;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.8); /* 柔和但深邃的陰影，不生硬 */
+        white-space: pre-wrap;
+    }
+
+    #options-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px; 
+        margin-top: 25px;
+        width: 100%;
+    }
+
+    /* 透明質感的選項按鈕 */
+    .rpg-option-box {
+        background: rgba(255, 255, 255, 0.05); /* 極度透明 */
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-left: 4px solid #5a78a0; /* 左側引導線 */
+        border-radius: 6px;
+        padding: 14px 20px;
+        color: #e2e8f0;
+        font-size: clamp(1.1rem, 2vw, 1.4rem); 
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    /* Hover 時瞬間亮起，投影指引超清楚 */
+    .rpg-option-box:hover, .rpg-option-box:active {
+        background: rgba(255, 255, 255, 0.95); 
+        color: #000; /* 文字反黑 */
+        border-color: #fff;
+        border-left-color: #e2c073; /* 左側線條變金 */
+        transform: translateX(12px); /* 優雅地向右滑出 */
+        box-shadow: 0 5px 20px rgba(255, 255, 255, 0.3);
+        font-weight: bold;
+    }
+
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    #dialog-arrow {
+        position: absolute;
+        right: 25px;
+        bottom: 20px;
+        color: #e2c073;
+        font-size: 1.5rem; 
+        animation: blink 1.5s infinite ease-in-out;
+    }
+
+    /* =========================================
+       手機直式版特別最佳化 (縮小字體與間距)
+       ========================================= */
+    @media (max-width: 768px) {
+        .glass-box {
+            padding: 30px 20px;
+            border: none;
+            background: rgba(0,0,0,0.5); /* 手機上稍微加深確保標題清楚 */
+        }
+        #bottom-ui {
+            padding: 0 15px 15px 15px;
+            margin-top: -40px;
+        }
+        .rpg-dialog {
+            padding: 20px 25px;
+            min-height: 180px;
+            border-top: 2px solid #e2c073;
+        }
+        #dialog-text {
+            font-size: 1.1rem; /* 手機字體縮小 */
+        }
+        .rpg-option-box {
+            font-size: 1rem; /* 手機選項字體縮小 */
+            padding: 12px 15px;
+        }
+    }
+
+    .hidden { display: none !important; }
+    
+    /* 結果文字發光效果優化，不俗氣 */
+    .text-normal { color: #f8f9fa !important; }
+    .text-pass { color: #6ee7b7 !important; text-shadow: 0 0 10px rgba(110, 231, 183, 0.4) !important; }
+    .text-fail { color: #fca5a5 !important; text-shadow: 0 0 10px rgba(252, 165, 165, 0.4) !important; }
+    .text-true-ending { color: #fde047 !important; text-shadow: 0 0 15px rgba(253, 224, 71, 0.5) !important; }
+
+</style>
+</head>
+<body>
+
+<div id="title-screen">
+    <!-- 極簡浮動面板 -->
+    <div class="glass-box">
+        <div class="title-text">The Drink Shop</div>
+        <div class="title-subtext">Adventure</div>
+        <button id="btn-enter-game" class="start-btn">Start Game</button>
+    </div>
+</div>
+
+<div id="game-container">
+    <div id="visual-area">
+        <div id="image-placeholder" class="hidden"></div>
+    </div>
+    
+    <div id="bottom-ui">
+        <!-- 現代感半透明對話框 -->
+        <div class="rpg-dialog" id="dialog-box">
+            <div id="dialog-text" class="text-normal"></div>
+            <div id="options-container" class="hidden"></div>
+            <div id="dialog-arrow" class="hidden">▼</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 圖片路徑 (.webp)
+const images = {
+    start_bg: 'start_bg.webp',
+    ending_bg: 'ending_bg.webp',
+    q1_scene: 'q1_scene.webp', q1_pass: 'q1_pass.webp', q1_fail: 'q1_fail.webp',
+    q2_scene: 'q2_scene.webp', q2_pass: 'q2_pass.webp', q2_fail: 'q2_fail.webp',
+    q3_scene: 'q3_scene.webp', q3_pass: 'q3_pass.webp', q3_fail: 'q3_fail.webp',
+    q4_scene: 'q4_scene.webp', q4_pass: 'q4_pass.webp', q4_fail: 'q4_fail.webp',
+    q5_scene: 'q5_scene.webp', q5_pass: 'q5_pass.webp', q5_fail: 'q5_fail.webp'
+};
+
+const gameData = [
+    {
+        title: "Question 1: The New Coffee (開發咖啡新口味)",
+        scene: "Question 1: The New Coffee (開發咖啡新口味)\n\nScene: You want to invent (發明) a new coffee flavor (口味), so you start mixing (混合) things.",
+        question: "Question: The coffee needs a special taste, so what do you add?",
+        imgScene: 'q1_scene', imgPass: 'q1_pass', imgFail: 'q1_fail',
+        options: [
+            { text: "Option A: I love spicy (辛辣的) food, so I add some hot chili (辣椒).", result: "Result (Pass): The chili coffee is surprisingly (出乎意料地) popular, so everyone loves it!", status: "pass" },
+            { text: "Option B: I want a salty flavor, so I add a lot of salt.", result: "Result (Fail): The coffee is toxic (有毒的), so the customer is poisoned (中毒) to death and your shop goes bankrupt (倒閉).", status: "fail" }
+        ]
+    },
+    {
+        title: "Question 2: The New Milk Tea (開發奶茶新口味)",
+        scene: "Question 2: The New Milk Tea (開發奶茶新口味)\n\nScene: You want to create a new milk tea, so you go to the kitchen.",
+        question: "Question: The milk tea is a bit boring, so what ingredient (食材) do you put in it?",
+        imgScene: 'q2_scene', imgPass: 'q2_pass', imgFail: 'q2_fail',
+        options: [
+            { text: "Option A: Sweet corn is tasty, so I add some yellow corn.", result: "Result (Pass): The corn milk tea is delicious, so people buy a lot of it!", status: "pass" },
+            { text: "Option B: Steamed (蒸的) egg is soft, so I add a steamed egg.", result: "Result (Fail): The egg goes bad (壞掉), so customers get food poisoning (食物中毒) and you lose all your money.", status: "fail" }
+        ]
+    },
+    {
+        title: "Question 3: The Bad Customer (遇到奧客)",
+        scene: "Question 3: The Bad Customer (遇到奧客)\n\nScene: A rude (無禮的) customer comes in, so he yells (大吼) loudly at you.",
+        question: "Question: He is very mean (惡劣的), so how do you handle (處理) the situation (情況)?",
+        imgScene: 'q3_scene', imgPass: 'q3_pass', imgFail: 'q3_fail',
+        options: [
+            { text: "Option A: I need help, so I call the police.", result: "Result (Fail): The police officer is his friend, so you are forced (被強迫) to close your shop.", status: "fail" },
+            { text: "Option B: I am extremely (極度地) angry, so I punch (揍) the bad man.", result: "Result (Pass): He is terrified (感到恐懼的), so he runs away quickly!", status: "pass" }
+        ]
+    },
+    {
+        title: "Question 4: More Customers (吸引更多客人)",
+        scene: "Question 4: More Customers (吸引更多客人)\n\nScene: You want to attract (吸引) more customers, so you need a good marketing (行銷) plan.",
+        question: "Question: You want people to know your shop, so what do you do?",
+        imgScene: 'q4_scene', imgPass: 'q4_pass', imgFail: 'q4_fail',
+        options: [
+            { text: "Option A: The internet spreads (傳播) fast, so I put a funny video online.", result: "Result (Pass): The video goes viral (爆紅), so a huge crowd (人群) comes to your shop!", status: "pass" },
+            { text: "Option B: People like free things, so I give away (贈送) all drinks for free.", result: "Result (Fail): You make zero profit (利潤), so you have no money to run the shop.", status: "fail" }
+        ]
+    },
+    {
+        title: "Question 5: The Bugs (蟲蟲危機)",
+        scene: "Question 5: The Bugs (蟲蟲危機)\n\nScene: There is a cockroach (蟑螂) infestation (氾濫/蟲害) in the shop, so people run away.",
+        question: "Question: The bugs are everywhere, so how do you solve (解決) this problem?",
+        imgScene: 'q5_scene', imgPass: 'q5_pass', imgFail: 'q5_fail',
+        options: [
+            { text: "Option A: I tell them the bugs are moving boba (珍珠), so people think it is a fun gimmick (噱頭).", result: "Result (True Ending): Everyone loves the crunchy (酥脆的) bug tea, so you become the Drink King!", status: "true-ending" },
+            { text: "Option B: I buy bug spray (殺蟲劑) to kill them, so the shop is very clean.", result: "Result (Fail): The spray falls into the milk tea, so everyone goes to the hospital.", status: "fail" }
+        ]
+    }
+];
+
+let currentLevel = 0;
+let gameState = 'INIT';
+let isTyping = false;
+let typeInterval;
+let fullTextCache = "";
+let typeCallback = null;
+
+const titleScreen = document.getElementById('title-screen');
+const visualArea = document.getElementById('visual-area');
+const dialogText = document.getElementById('dialog-text');
+const dialogArrow = document.getElementById('dialog-arrow');
+const optionsContainer = document.getElementById('options-container');
+
+const startImgUrl = images['start_bg'];
+titleScreen.style.backgroundImage = `url('${startImgUrl}')`;
+
+document.getElementById('btn-enter-game').addEventListener('click', () => {
+    titleScreen.style.opacity = '0';
+    setTimeout(() => {
+        titleScreen.style.display = 'none';
+        startLevel(0);
+    }, 1000); // 放慢一點消失動畫，更有質感
+});
+
+function returnToTitle() {
+    titleScreen.style.display = 'flex';
+    setTimeout(() => {
+        titleScreen.style.opacity = '1';
+    }, 50);
+}
+
+function setImage(imgKey) {
+    const url = images[imgKey];
+    visualArea.style.backgroundImage = `url('${url}')`;
+}
+
+function typeText(text, colorClass, callback) {
+    clearInterval(typeInterval);
+    dialogText.className = colorClass;
+    dialogText.innerHTML = "";
+    dialogArrow.classList.add('hidden');
+    optionsContainer.classList.add('hidden');
+    
+    fullTextCache = text;
+    isTyping = true;
+    typeCallback = callback;
+    let index = 0;
+
+    typeInterval = setInterval(() => {
+        dialogText.innerHTML = text.substring(0, index);
+        index++;
+        if (index > text.length) {
+            finishTyping();
+        }
+    }, 25); // 字體出現速度稍微加快一點，節奏更好
+}
+
+function finishTyping() {
+    clearInterval(typeInterval);
+    dialogText.innerHTML = fullTextCache;
+    isTyping = false;
+    if (typeCallback) typeCallback();
+}
+
+function showOptions(options) {
+    optionsContainer.innerHTML = '';
+    options.forEach(opt => {
+        const btn = document.createElement('div');
+        btn.className = 'rpg-option-box';
+        btn.innerText = opt.text;
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            showResult(opt);
+        };
+        optionsContainer.appendChild(btn);
+    });
+    optionsContainer.classList.remove('hidden');
+}
+
+function startLevel(levelIndex) {
+    currentLevel = levelIndex;
+    const data = gameData[currentLevel];
+    setImage(data.imgScene);
+    
+    gameState = 'SCENE_WAIT';
+    typeText(data.scene, 'text-normal', () => {
+        dialogArrow.classList.remove('hidden');
+    });
+}
+
+function showQuestion() {
+    const data = gameData[currentLevel];
+    gameState = 'QUESTION_WAIT';
+    typeText(data.question, 'text-normal', () => {
+        showOptions(data.options);
+    });
+}
+
+function showEnding() {
+    gameState = 'ENDING_WAIT';
+    setImage('ending_bg');
+    
+    const endingMsg = "Congratulations! (恭喜你！)\n\nYour drink shop is very successful (非常成功)! Many people come to buy (購買) your drinks.\n\nYou are the best (最棒的) boss in the city! Today is a beautiful (美麗的) day.\n\n【 Perfect Clear (完美通關) 】";
+    
+    typeText(endingMsg, 'text-true-ending', () => {
+        optionsContainer.innerHTML = '';
+        const btn = document.createElement('div');
+        btn.className = 'rpg-option-box';
+        // 特別樣式的返回按鈕
+        btn.style.background = 'rgba(255, 255, 255, 0.9)';
+        btn.style.color = '#000';
+        btn.style.textAlign = 'center';
+        btn.innerText = "★ Return to Title (返回標題) ★";
+        btn.onclick = (e) => { 
+            e.stopPropagation(); 
+            returnToTitle(); 
+        };
+        optionsContainer.appendChild(btn);
+        optionsContainer.classList.remove('hidden');
+    });
+}
+
+function showResult(option) {
+    const data = gameData[currentLevel];
+    gameState = 'RESULT_WAIT';
+    
+    if (option.status === 'pass' || option.status === 'true-ending') {
+        setImage(data.imgPass);
+    } else {
+        setImage(data.imgFail);
+    }
+
+    let colorClass = `text-${option.status}`;
+
+    typeText(option.result, colorClass, () => {
+        optionsContainer.innerHTML = '';
+        const btn = document.createElement('div');
+        btn.className = 'rpg-option-box';
+        btn.style.textAlign = 'center';
+        
+        if (option.status === 'fail') {
+            btn.style.borderLeftColor = '#ef4444';
+            btn.innerText = "Game Over - Return to Title (返回標題)";
+            btn.onclick = (e) => { e.stopPropagation(); returnToTitle(); };
+        } else if (option.status === 'pass' && currentLevel < gameData.length - 1) {
+            btn.style.borderLeftColor = '#e2c073';
+            btn.innerText = "Next Question (下一題) ➔";
+            btn.onclick = (e) => { e.stopPropagation(); startLevel(currentLevel + 1); };
+        } else {
+            btn.style.background = 'rgba(255, 255, 255, 0.9)';
+            btn.style.color = '#000';
+            btn.innerText = "View Ending (觀看結局) ➔";
+            btn.onclick = (e) => { e.stopPropagation(); showEnding(); };
+        }
+        
+        optionsContainer.appendChild(btn);
+        optionsContainer.classList.remove('hidden');
+    });
+}
+
+document.getElementById('bottom-ui').addEventListener('click', () => {
+    if (isTyping) { finishTyping(); return; }
+    if (gameState === 'SCENE_WAIT') { showQuestion(); }
+});
+
+document.getElementById('visual-area').addEventListener('click', () => {
+    if (isTyping) { finishTyping(); return; }
+    if (gameState === 'SCENE_WAIT') { showQuestion(); }
+});
+
+</script>
+</body>
+</html>
